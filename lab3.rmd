@@ -1,0 +1,209 @@
+---
+title: 'P&S-2022: Lab assignment 2'
+author: "Sofiia Trush, Taras Kopach, Daryna Onopriienko"
+output:
+  html_document:
+    df_print: paged
+---
+
+**Work breakdown**
+
+-   Task 1: Taras Kopach
+
+-   Task 2: Sofiia Trush
+
+-   Task 3: Daryna Onopriienko
+
+### Task 3
+
+Create dataset:
+
+```{r}
+set.seed(42)
+n <- 100
+mu <- 10
+sigma_squared <- 4
+sigma <- sqrt(sigma_squared)
+dataset <- rnorm(n, mean = mu, sd = sigma)
+head(dataset)
+## [1] 12.741917 8.870604 10.726257 11.265725 10.808537 9.787751
+cat("Population Mean (mu):", mu, "\n")
+## Population Mean (mu): 10
+cat("Population Variance (sigma_squared):", sigma_squared, "\n")
+## Population Variance (sigma_squared): 4
+sample_mean <- mean(dataset)
+sample_variance <- var(dataset)
+cat("Sample Mean:", sample_mean, "\n")
+## Sample Mean: 10.06503
+cat("Sample Variance:", sample_variance, "\n")
+## Sample Variance: 4.337697
+```
+
+(a) write the code to find the variance for the dataset
+
+This is a realization for the first common estimator (biased):
+
+$$\sigma_n^2 = \frac{1}{n}\sum_{i=1}^n (X_i - \overline{X})^2$$
+
+```{r}
+estimator1 <- function(dataset){
+  sample_mean <- mean(dataset)
+  count <- 0
+  for (el in dataset){
+    count <- count + (el - sample_mean)^2
+  }
+  return (count / length(dataset))
+}
+
+```
+
+Now let's write for the second common estimator (unbiased):
+
+$$\sigma_{n-1}^2 = \frac{1}{n-1}\sum_{i=1}^n (X_i - \overline{X})^2$$
+
+```{r}
+estimator2 <- function(dataset){
+  sample_mean <- mean(dataset)
+  count <- 0
+  for (el in dataset){
+    count <- count + (el - sample_mean)^2
+  }
+  return (count / (length(dataset)-1))
+}
+```
+
+(b) testing estimators on different sizes of datasets
+
+```{r}
+set.seed(20)
+for (size in c(10, 50, 100, 1000)){
+  dataset <- rnorm(size, mean = mu, sd = sigma)
+  cat("n =", size, "   estimator1 =", estimator1(dataset),"   estimator2 =", estimator2(dataset), "\n")
+}
+
+```
+
+As the sample size increases, both estimators move closer to the true variance $σ^2=4$. The difference between estimator1 and estimator2 also becomes very small. This illustrates that with larger samples both estimators concentrate around the true variance, even though for small $n$ they may deviate a lot just because of randomness.
+
+(c) find the biases
+
+$$\text{Bias}(\sigma_n^2) = E(\sigma_n^2) - \sigma^2$$
+
+$$\text{Bias}(\sigma_{n-1}^2) = E(\sigma_{n-1}^2) - \sigma^2$$
+
+```{r}
+bias <- function(n, reps=10000){
+  
+  estim1 <- numeric(reps)
+  estim2 <- numeric(reps)
+  
+  for (i in 1:reps){
+    dataset <- rnorm(n, mean = mu, sd = sigma)
+    estim1[i]  <- estimator1(dataset)
+    estim2[i] <- estimator2(dataset)
+  }
+  
+  E_sigma_n  <- mean(estim1)
+  E_sigma_n1 <- mean(estim2)
+  
+  bias_n  <- E_sigma_n  - sigma^2
+  bias_n1 <- E_sigma_n1 - sigma^2
+  
+  return(list(
+    E_sigma_n  = E_sigma_n,
+    E_sigma_n1 = E_sigma_n1,
+    bias_n  = bias_n,
+    bias_n1 = bias_n1
+  ))
+}
+```
+
+d.  Comment on the results for different values of n
+
+```{r}
+set.seed(20)
+results_list <- lapply(c(10, 50, 100, 1000), bias)
+results_df <- do.call(rbind, lapply(results_list, as.data.frame))
+results_df$n <- c(10, 50, 100, 1000)
+results_df <- results_df[, c("n", names(results_df)[names(results_df) != "n"])]
+results_df
+```
+
+Looking at the values in the table, we can see that when the sample size is small (n = 10), both estimators are still quite far from the true variance 4. Estimator1 gives a noticeably smaller value (around 3.61), while estimator2 is closer to 4 but still a bit off because of randomness.
+
+As n increases to 50 and 100, both estimators move much closer to 4, and the biases become smaller. Estimator1 consistently stays below 4, which matches the fact that it is biased downward. Estimator2 is around 4.
+
+For n = 1000, both estimators are extremely close to 4, and the bias is almost zero. At this point the effect of randomness becomes very small, and both estimators show the true value of the population variance.
+
+(e) derive analytically the expected value of each estimator
+
+$$
+\mathbb{E}[\sigma_n^2]
+=  \mathbb{E}\left[ \frac{1}{n} \sum_{i=1}^n (X_i - \overline{X})^2 \right]
+= \frac{1}{n}(n-1)\sigma^2
+= \frac{n-1}{n}\sigma^2
+$$
+
+$$
+\mathbb{E}[\sigma_{n-1}^2]
+= \mathbb{E}\left[ \frac{1}{n-1} \sum_{i=1}^n (X_i - \overline{X})^2 \right]
+= \frac{1}{n-1}(n-1)\sigma^2
+= \sigma^2
+$$
+
+f.  using the expected values found above, show mathematically what of the above two estimators are unbiased
+
+    for the first estimator
+
+$$
+\sigma_n^2 = \frac{1}{n}\sum_{i=1}^n (X_i - \overline{X})^2
+$$
+
+$$
+\mathbb{E}[\sigma_n^2]
+= \frac{1}{n}\,\mathbb{E}\left[\sum_{i=1}^n (X_i - \overline{X})^2\right]
+= \frac{1}{n}(n-1)\sigma^2
+= \frac{n-1}{n}\sigma^2.
+$$
+
+$$
+\text{Bias}(\sigma_n^2)
+= \mathbb{E}[\sigma_n^2] - \sigma^2
+= \frac{n-1}{n}\sigma^2 - \sigma^2
+= -\frac{1}{n}\sigma^2.
+$$
+
+First estimator is asymptotically unbiased.
+
+for the second estimator
+
+$$
+\sigma_{n-1}^2 = \frac{1}{n-1}\sum_{i=1}^n (X_i - \overline{X})^2
+$$
+
+$$
+\mathbb{E}[\sigma_{n-1}^2]
+= \frac{1}{n-1}(n-1)\sigma^2
+= \sigma^2.
+$$
+
+$$
+\text{Bias}(\sigma_{n-1}^2)
+= \mathbb{E}[\sigma_{n-1}^2] - \sigma^2
+= \sigma^2 - \sigma^2
+= 0.
+$$
+
+Second estimator is unbiased.
+
+g\. comment on the results behind theoretical and practical tasks
+
+In general, for small $n$ biased estimator tends to be lower than the actual value, while unbiased fluctuates between lower and upper values.
+
+For large $n$ both estimator go to the actual value, as bias (in the biased estimator) goes to 0.
+
+$$
+\sigma_{n-1}^2 \text{ unbiased estimator,}
+$$ $$
+\sigma_n^2 \text{ asymptotically unbiased } (\sigma_n^2 \xrightarrow{} \sigma^2)
+$$
