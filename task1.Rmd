@@ -1,0 +1,236 @@
+---
+title: "task1"
+output: html_document
+---
+
+## Task 1
+
+The expected value of the exponential distribution E(λ) is 1/λ, so that a good point estimate of the parameter θ := 1/λ is the sample mean $\overline{X}$. Confidence interval for θ can be formed in several different ways:
+
+```{r}
+id <- 35
+set.seed(id)
+theta <- id/10
+n <- 100
+lambda <- 1 / theta
+
+```
+
+### CI length calculation methods
+
+#### 1) Using $\chi_{2n}^2$ distribution via percentiles.
+
+We pass the sample mean $\mathbf{\overline{X}}$ and use the distribution of $2\lambda n \mathbf{\overline{X}}$.
+
+To what what is the distribution of this expression we have to figure out the distribution of $\mathbf{\overline{X}}$.
+
+$\mathbf{\overline{X}} = \frac{\sum{X_i}}{n}$, where $X_i$ is exponential with parameter $\lambda$ The sum of exponentials is Gamma distribution ($Gamma(n, \lambda)$)
+
+$2\lambda Gamma(n, \lambda) \Rightarrow Gamma(n, \frac{1}{2})$ Which is equal to $\chi^2_{2n}$, so we can apply corresponding quantiles and find the confidence interval:
+
+```{r}
+chisq_ci <- function(n, theta, sample_mean, alpha) {
+  df <- 2 * n
+  
+  lb <- (2 * n * sample_mean) / qchisq(1 - alpha / 2, df = df)
+  ub <- (2 * n * sample_mean) / qchisq(alpha / 2, df = df)
+  
+  ci_quality <- mean(lb <= theta & theta <= ub)
+  ci_max <- max(ub - lb)
+  ci_mean <- mean(ub - lb)
+  
+  return(list(ciq = ci_quality, cix = ci_max, cim = ci_mean))
+}
+
+
+```
+
+#### 2) Using normal approximation for the sample mean
+
+Since we are passing $\alpha$ we consider:
+
+$$
+  2\beta - 1 = 1 - \alpha \Rightarrow \beta = 1 - \frac{\alpha}{2}
+$$
+
+We find the quantiles for our confidence level and extract $\theta$ from the inequality:
+
+$$
+  P(|\theta - \mathbf{\overline{X}} | \leq \frac{z_\beta \theta}{\sqrt{n}}) \Rightarrow - \frac{z_\beta \theta}{\sqrt{n}} \leq \theta - \mathbf{\overline{X}} \leq \frac{z_\beta \theta}{\sqrt{n}} \Rightarrow \mathbf{\overline{X}} - \frac{z_\beta \theta}{\sqrt{n}} \leq \theta  \leq \mathbf{\overline{X}} + \frac{z_\beta \theta}{\sqrt{n}}
+$$
+
+```{r}
+z_stat <- function(n, theta, sample_mean, alpha) {
+
+  beta <- 1 - alpha / 2
+  
+  z <- qnorm(beta) * theta / sqrt(n)
+  ubs <- sample_mean + z
+  lbs <- sample_mean - z
+  
+  ci_quality <- mean(lbs <= theta & theta <= ubs)
+  ci_max <- max(ubs - lbs)
+  ci_mean <- mean(ubs - lbs)
+  
+  return(list(ciq = ci_quality, cix = ci_max, cim = ci_mean))
+}
+
+```
+
+#### 3) Confidence interval of confidence level 2β − 1 that is independent of the unknown parameter.
+
+We can play with our inequality to get a confidence interval that has bounds not dependent of $\theta$ $$
+  |\theta - \mathbf{\overline{X}}| \leq \frac{z_\beta \theta}{ \sqrt{n}}
+$$
+
+$$\Downarrow$$ $$ 
+  - \frac{z_\beta \theta}{ \sqrt{n}} \leq 1 - \frac{\mathbf{\overline{X}}}{\theta} \leq \frac{z_\beta \theta}{ \sqrt{n}}
+$$ In the next steps we isolate $\theta$ to get the final CI:
+
+$$
+\frac{\mathbf{\overline{X}}}{1 + \frac{z_\beta \theta}{ \sqrt{n}}} \leq \theta \leq \frac{\mathbf{\overline{X}}}{1 - \frac{z_\beta \theta}{ \sqrt{n}}}
+$$ The function is very similar to the previous one, but with the new bounds.
+
+```{r}
+z_stat_indp <- function(n, theta, sample_mean, alpha){
+  
+  beta <- 1 - alpha / 2
+  
+  z <- qnorm(beta) / sqrt(n)
+  ubs <- sample_mean / (1 - z)
+  lbs <- sample_mean / (1 + z)
+  
+  ci_quality <- mean(lbs <= theta & theta <= ubs)
+  ci_max <- max(ubs - lbs)
+  ci_mean <- mean(ubs - lbs)
+  
+  return(list(ciq = ci_quality, cix = ci_max, cim = ci_mean))
+}
+
+```
+
+#### 4) Using t-Student distribution
+
+In the previous method of finding the CI we used the population variance of $s^2 = \theta^2$, but if we want a confidence interval that doesn't use the unknown $Var$, we can use the sample standard error (which is the square root of the sample variance) as an approximation ($\sqrt{\frac{S_{\mathbf{XX}}}{n -1}}$). Where $S_{\mathbf{XX}} = \sum(X_i - \theta)^2$ And $n - 1$ - are the degrees of freedom.
+
+Now we form the interval for the standartdized function, using these estimators $$
+  \frac{\mathbf{\overline{X}} - \theta}{\sqrt{\frac{S_{\mathbf{XX}}}{n(n -1)}}} \Rightarrow \sqrt{n(n - 1)}\frac{\mathbf{\overline{X}} - \theta}{\sqrt{{S_{\mathbf{XX}}}}}
+$$ This expression has Student distribution with $n - 1$ degrees of freedom. Isolating theta from here will give us the bounds $\mathbf{\overline{X}} \pm \frac{t_{\alpha/2}^{(n - 1) \sqrt{S_{\mathbf{XX}}}}}{\sqrt{n(n - 1)}}$
+
+```{r}
+t_ci <- function(n, theta, sample_mean, ssd, alpha){
+  df <- n - 1
+  
+  ubs <- sample_mean + (qt(1 - alpha / 2, df) * ssd / sqrt(n)) 
+  lbs <- sample_mean - (qt(1 - alpha / 2, df) * ssd / sqrt(n)) 
+  
+  ci_quality <- mean(lbs <= theta & theta <= ubs)
+  ci_max <- max(ubs - lbs)
+  ci_mean <- mean(ubs - lbs)
+  
+  return(list(ciq = ci_quality, cix = ci_max, cim = ci_mean))
+}
+
+```
+
+------------------------------------------------------------------------
+
+Here we verify that the confidence intervals of level 1 − α constructed via the four methods of forming them contain the parameter θ = 1/λ approx. 100(1 − α)% of times. Each CI calculation with it's own parameter combinations is stored in the corresponding data frames, from where we could analyse the accuracy of the intervals, their max and mean lengths.
+
+```{r}
+#data structures
+counter <- 1
+
+sizes <- c(100, 1000, 10000)
+repetitions <- c(10, 100, 1000)
+alphas <- c(0.1, 0.05, 0.01)
+total_rows <- length(sizes) * length(repetitions) * length(alphas)
+
+
+
+z_stat_intervals <- data.frame(
+  n = numeric(total_rows),
+  m = numeric(total_rows),
+  alpha = numeric(total_rows),
+  ci_quality = numeric(total_rows),
+  max_len = numeric(total_rows),
+  mean_len = numeric(total_rows)
+)
+
+chi_sq_intervals <- data.frame(
+  n = numeric(total_rows),
+  m = numeric(total_rows),
+  alpha = numeric(total_rows),
+  ci_quality = numeric(total_rows),
+  max_len = numeric(total_rows),
+  mean_len = numeric(total_rows)
+)
+
+z_indp_intervals <- data.frame(
+  n = numeric(total_rows),
+  m = numeric(total_rows),
+  alpha = numeric(total_rows),
+  ci_quality = numeric(total_rows),
+  max_len = numeric(total_rows),
+  mean_len = numeric(total_rows)
+)
+
+t_stud_intervals <- data.frame(
+  n = numeric(total_rows),
+  m = numeric(total_rows),
+  alpha = numeric(total_rows),
+  ci_quality = numeric(total_rows),
+  max_len = numeric(total_rows),
+  mean_len = numeric(total_rows)
+)
+
+```
+
+```{r}
+
+counter <- 1
+for (n in sizes){
+  for (m in repetitions){
+    for (a in alphas) {
+      samples <- matrix(rexp(n * m, rate = lambda), nrow = n)
+      
+      sample_mean <- colMeans(samples)
+      sample_sd <- apply(samples, 2, sd)
+      
+      c_s <- chisq_ci(n, theta, sample_mean, a)
+      z_s <- z_stat(n, theta, sample_mean, a)
+      i_s <- z_stat_indp(n, theta, sample_mean, a)
+      t_s <- t_ci(n, theta, sample_mean, sample_sd, a)
+      
+      z_stat_intervals[counter, ] <- list(n, m, a, z_s$ciq, z_s$cix, z_s$cim) 
+      chi_sq_intervals[counter, ] <- list(n, m, a, c_s$ciq, c_s$cix, c_s$cim)
+      z_indp_intervals[counter, ] <- list(n, m, a, i_s$ciq, i_s$cix, i_s$cim) 
+      t_stud_intervals[counter, ] <- list(n, m, a, t_s$ciq, t_s$cix, t_s$cim) 
+      counter <- counter + 1
+    }
+  }
+
+} 
+
+
+
+
+```
+
+### Conclusions from Task 1
+First of all, in all of the CI methods different parameters used, such as: sample size (n), number of repetitions (m) and the significance level (alpha). After conducting the calculation we noticed that the longest interval is with the set parameters (n=100, m=1000, alpha=0.01). This is an interesting observation, and we assume it's from the seed. The CI accuracy almost in all cases is very close or coincides with the confidence level.
+
+```{r}
+all_intervals <- list(
+  "Z-stat" = z_stat_intervals,
+  "Chi-squared" = chi_sq_intervals,
+  "Z-stat-indp" = z_indp_intervals,
+  "T-stud" = t_stud_intervals
+)
+
+for (name in names(all_intervals)) {
+  interval <- all_intervals[[name]]
+  cat("Interval type:", name, "CI quality on average:", mean(interval[, 4]), "\n")
+}
+```
+From the calculations from these samples we could say that using z-statistic that is independent of the sample variance is the most accurate way for $\theta$. From the first sight we don't really see the difference in the dependence on the $s$ of the Z statistic method, but if you compare the maximum length you could see that the independent method length is 2.62 vs. 1.80 in the other. This gives us more "evidence" to our estimation.
