@@ -1,0 +1,176 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+## Problem 2
+
+Repeat parts (2)–(4) of Problem 1 (with corresponding amendments) for a Poisson distribution P(θ).
+
+$$
+X_1,…,X_n∼Poisson(θ)
+$$
+
+so
+
+$$
+E[X_i​]=θ; Var(X_i)=θ
+$$
+
+our sample mean:
+
+$$
+\overline{X}=\frac{1}{n}∑X_i 
+$$
+
+and:
+
+$$
+E(\overline{X}) =(1/n)*n*θ =θ; Var(\overline{X})=(1/n^2)*n*θ=θ/n
+$$
+
+#### Method 2 (part 2 of Problem 1)
+
+(using the normal approximation $N(µ, σ_2)$ for $\overline{X}$)
+
+We use Z-statistic and fact that it is approximately standard normal:
+
+$$
+Z=\frac{\sqrt{​n​}(\overline{X}−θ)}{\sqrt{θ}}∼N(0,1) 
+$$
+
+Therefore, for a confidence level of 1−α (with quantile $z_{1−α/2}$) (we use true variance):
+
+$$
+P(​|\overline{X}-θ|​≤z_{1−α/2}\sqrt{\frac{​θ}{n}}​​)=P(​\overline{X}-z_{1−α/2}\sqrt{\frac{​θ}{n}}≤θ​≤\overline{X}+z_{1−α/2}\sqrt{\frac{​θ}{n}}​​)=1−α
+$$ so
+
+$$
+θ∈[\overline{X}−z\sqrt{\frac{θ}{n}}​,\overline{X}+z\sqrt{\frac{θ}{n}}​]
+$$
+
+#### Method 3
+
+Start again from $∣\overline{X}−θ∣≤z\sqrt{\frac{θ}{n}}$​​.
+
+This inequality contains θ on both sides (variance is unknown), so steps:
+
+1.  $(\overline{X}−θ)^2≤\frac{z^2θ}{n}$.
+
+2.  $n(\overline{X}^2−2\overline{X}θ +θ^2)-z^2θ≤0$.
+
+3.  $nθ^2- (2\overline{X}n+z^2)θ+n\overline{X}^2≤0$
+
+4.  Solve the quadratic equation and get root$θ1,θ2=\frac{2n\overline{X}+z^2±z\sqrt{4n\overline{X}+z^2}}{2n}$
+
+5.  These two roots give the confidence interval: $CI=[θ1, θ2]$
+
+    This CI does not contain θ inside the formula, so it is usable in practice.
+
+#### Method 4
+
+(get rid of the dependence on θ in (2) is to estimate s via the sample standard error and use approximation of $\overline{X}$ via Student t-distribution)
+
+sample variance:
+
+$$
+s^2=\frac{S_{xx}}{n-1}=\frac{1}{n-1}∑(Xi​−\overline{X})^2;
+$$
+
+standard error = $\frac{s}{\sqrt{n}}$ = $\sqrt{\frac{S_{XX}}{n(n-1)}}$; then statistic:
+
+$$
+T := \frac{(\overline{X}-µ)}{\frac{\sqrt{S_{xx}}}{\sqrt{n(n-1}}} = \frac{\sqrt{n}(\overline{X}-µ)}{s} ∼ t_{n-1}
+$$ so,
+
+$$
+θ∈[\overline{X}−t_{1-a/2,n-1}\frac{s}{\sqrt{n}}​,\overline{X}+t_{1-a/2,n-1}\frac{s}{\sqrt{n}}]
+$$
+
+```{r}
+team_id = 35
+set.seed(team_id)
+theta <- team_id / 10
+
+M <- 1000
+sample_sizes <- c(10, 50, 100)
+alpha_levels <- c(0.1, 0.05, 0.01)
+
+coverage <- function(lower, upper, theta) {
+  mean(lower <= theta & theta <= upper)
+}
+
+cat("the number of repetitions: m =", M, "\n")
+
+for (n in sample_sizes) {
+  cat("        Sample size n =", n)
+  
+  x <- matrix(rpois(n * M, lambda = theta), nrow = n)
+  sample_mean <- colMeans(x)
+  sample_sd <- apply(x, 2, sd)
+
+# Method 2
+  for (alpha in alpha_levels) {
+    confidence_level <- 1 - alpha
+    cat("\nConfidence level =", confidence_level, "\n")
+
+    z <- qnorm(1 - alpha/2)
+    lower2 <- sample_mean - z * sqrt(theta / n)
+    upper2 <- sample_mean + z * sqrt(theta / n)
+    
+    cov2 <- coverage(lower2, upper2, theta)
+    len2 <- mean(upper2 - lower2)
+    
+    cat("Method 2:    coverage =", round(cov2,5),
+        ", mean length =", round(len2,5), "\n")
+    
+    
+# Method 3
+    a <- 2 * n * sample_mean + z^2
+    b <- z * sqrt(4 * n * sample_mean + z^2)
+    lower3 <- (a - b) / (2 * n)
+    upper3 <- (a + b) / (2 * n)
+    
+    cov3 <- coverage(lower3, upper3, theta)
+    len3 <- mean(upper3 - lower3)
+    
+    cat("Method 3:    coverage =", round(cov3,5),
+        ", mean length =", round(len3,5), "\n")
+    
+    
+# Method 4    
+    t_critical <- qt(1 - alpha/2, df = n - 1)
+    lower4 <- sample_mean - t_critical * sample_sd / sqrt(n)
+    upper4 <- sample_mean + t_critical * sample_sd / sqrt(n)
+    
+    cov4 <- coverage(lower4, upper4, theta)
+    len4 <- mean(upper4 - lower4)
+    
+    cat("Method 4:    coverage =", round(cov4,5),
+        ", mean length =", round(len4,5), "\n")
+  }
+  cat("\n")
+}
+```
+
+#### Conclusion
+
+**CI coverage**
+
+Across all sample sizes and all confidence levels, the coverage of the intervals is very close to the confidence level. This confirms that all three methods work correctly for estimating the Poisson parameter θ.
+
+-   Method 2 and Method 3 have almost identical coverage for every n and α.
+
+-   Method 4 tends to have slightly better coverage when the sample size is small (n = 10), since the t-distribution compensates for uncertainty in the variance estimate.
+
+**CI precision (mean interval length)**
+
+When comparing the average length of intervals:
+
+-   Method 2 and Method 3 consistently give the shortest intervals
+
+-   Method 4 always has the longest intervals, especially for n = 10, because it uses estimated variance and a t-critical value - quantile of the Student’s t-distribution.
+
+**Also, we can see that as n increases, all methods become more accurate:** average CI length decreases significantly, coverage becomes almost identical across all methods, differences between the methods become smaller.
+
+This matches the common-sense expectation: larger n stabilizes the sample mean and reduces uncertainty.
