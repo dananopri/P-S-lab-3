@@ -88,7 +88,7 @@ $$\Downarrow$$ $$
 $$ In the next steps we isolate $\theta$ to get the final CI:
 
 $$
-\frac{\mathbf{\overline{X}}}{1 + \frac{z_\beta \theta}{ \sqrt{n}}} \leq \theta \leq \frac{\mathbf{\overline{X}}}{1 - \frac{z_\beta \theta}{ \sqrt{n}}}
+\frac{\mathbf{\overline{X}}}{1 + \frac{z_\beta}{ \sqrt{n}}} \leq \theta \leq \frac{\mathbf{\overline{X}}}{1 - \frac{z_\beta}{ \sqrt{n}}}
 $$ The function is very similar to the previous one, but with the new bounds.
 
 ```{r}
@@ -218,6 +218,7 @@ for (n in sizes){
 ```
 
 ### Conclusions from Task 1
+
 First of all, in all of the CI methods different parameters used, such as: sample size (n), number of repetitions (m) and the significance level (alpha). After conducting the calculation we noticed that the longest interval is with the set parameters (n=100, m=1000, alpha=0.01). This is an interesting observation, and we assume it's from the seed. The CI accuracy almost in all cases is very close or coincides with the confidence level.
 
 ```{r}
@@ -233,4 +234,5 @@ for (name in names(all_intervals)) {
   cat("Interval type:", name, "CI quality on average:", mean(interval[, 4]), "\n")
 }
 ```
+
 From the calculations from these samples we could say that using z-statistic that is independent of the sample variance is the most accurate way for $\theta$. From the first sight we don't really see the difference in the dependence on the $s$ of the Z statistic method, but if you compare the maximum length you could see that the independent method length is 2.62 vs. 1.80 in the other. This gives us more "evidence" to our estimation.
