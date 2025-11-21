@@ -171,6 +171,4 @@ When comparing the average length of intervals:
 
 -   Method 4 always has the longest intervals, especially for n = 10, because it uses estimated variance and a t-critical value - quantile of the Student’s t-distribution.
 
-**Also, we can see that as n increases, all methods become more accurate:** average CI length decreases significantly, coverage becomes almost identical across all methods, differences between the methods become smaller.
-
-This matches the common-sense expectation: larger n stabilizes the sample mean and reduces uncertainty.
+**Also, we can see that as n increases, all methods become more accurate:** average CI length decreases, coverage becomes almost identical across all methods, differences between the methods become smaller.
