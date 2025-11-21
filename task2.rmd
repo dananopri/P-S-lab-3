@@ -33,7 +33,7 @@ $$
 
 (using the normal approximation $N(µ, σ_2)$ for $\overline{X}$)
 
-We use Z-statistic and fact that it is approximately standard normal:
+We form Z-statistic and use the fact that it is approximately standard normal:
 
 $$
 Z=\frac{\sqrt{​n​}(\overline{X}−θ)}{\sqrt{θ}}∼N(0,1) 
@@ -102,6 +102,9 @@ coverage <- function(lower, upper, theta) {
 
 cat("the number of repetitions: m =", M, "\n")
 
+results_list <- list()
+counter <- 1
+
 for (n in sample_sizes) {
   cat("        Sample size n =", n)
   
@@ -120,9 +123,11 @@ for (n in sample_sizes) {
     
     cov2 <- coverage(lower2, upper2, theta)
     len2 <- mean(upper2 - lower2)
+    max2 <- max(upper2 - lower2)
     
     cat("Method 2:    coverage =", round(cov2,5),
-        ", mean length =", round(len2,5), "\n")
+        ", mean length =", round(len2,5), 
+        ", max length =", round(max2,5), "\n")
     
     
 # Method 3
@@ -133,9 +138,11 @@ for (n in sample_sizes) {
     
     cov3 <- coverage(lower3, upper3, theta)
     len3 <- mean(upper3 - lower3)
+    max3 <- max(upper3 - lower3)
     
     cat("Method 3:    coverage =", round(cov3,5),
-        ", mean length =", round(len3,5), "\n")
+        ", mean length =", round(len3,5), 
+        ", max length =", round(max3,5), "\n")
     
     
 # Method 4    
@@ -145,12 +152,59 @@ for (n in sample_sizes) {
     
     cov4 <- coverage(lower4, upper4, theta)
     len4 <- mean(upper4 - lower4)
+    max4 <- max(upper4 - lower4)
     
     cat("Method 4:    coverage =", round(cov4,5),
-        ", mean length =", round(len4,5), "\n")
+        ", mean length =", round(len4,5), 
+        ", max length =", round(max4,5), "\n")
+    
+
+    results_list[[counter]] <- data.frame(
+      n = n,
+      alpha = alpha,
+      conf_level = confidence_level,
+      Method = rep(c("Method 2", "Method 3", "Method 4"), each = 1),
+      Coverage = c(cov2, cov3, cov4),
+      Mean_Length = c(len2, len3, len4)
+    )
+    counter <- counter + 1
   }
   cat("\n")
 }
+```
+
+#### Visualization
+
+```{r}
+library(ggplot2)
+
+results_df <- do.call(rbind, results_list)
+
+for (n_val in sample_sizes) {
+  
+  df_n <- subset(results_df, n == n_val)
+  
+  print(
+    ggplot(df_n, aes(x = conf_level, y = Coverage,
+                     color = Method, group = Method)) +
+      geom_line(size = 1.1) +
+      geom_point(size = 3) +
+      geom_hline(aes(yintercept = conf_level),
+                 linetype = "dashed", color = "gray") +
+      labs(title = paste("Coverage Probability (n =", n_val, ")"),
+           x = "Confidence Level", y = "Coverage") +
+      theme_minimal()
+  )
+  
+  print(
+    ggplot(df_n, aes(x = conf_level, y = Mean_Length, fill = Method)) +
+      geom_bar(stat = "identity", position = "dodge") +
+      labs(title = paste("Mean CI Length (n =", n_val, ")"),
+           x = "Confidence Level", y = "Mean CI Length") +
+      theme_minimal()
+  )
+}
+
 ```
 
 #### Conclusion
@@ -172,3 +226,5 @@ When comparing the average length of intervals:
 -   Method 4 always has the longest intervals, especially for n = 10, because it uses estimated variance and a t-critical value - quantile of the Student’s t-distribution.
 
 **Also, we can see that as n increases, all methods become more accurate:** average CI length decreases, coverage becomes almost identical across all methods, differences between the methods become smaller.
+
+This matches the expectation: larger n stabilizes the sample mean and reduces uncertainty.
