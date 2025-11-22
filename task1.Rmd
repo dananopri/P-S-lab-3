@@ -149,6 +149,7 @@ total_rows <- length(sizes) * length(repetitions) * length(alphas)
 
 
 z_stat_intervals <- data.frame(
+  name = "Z-stat",
   n = numeric(total_rows),
   m = numeric(total_rows),
   alpha = numeric(total_rows),
@@ -158,6 +159,7 @@ z_stat_intervals <- data.frame(
 )
 
 chi_sq_intervals <- data.frame(
+  name = "Chi-Squared",
   n = numeric(total_rows),
   m = numeric(total_rows),
   alpha = numeric(total_rows),
@@ -167,6 +169,7 @@ chi_sq_intervals <- data.frame(
 )
 
 z_indp_intervals <- data.frame(
+  name = "Z-stat-independent",
   n = numeric(total_rows),
   m = numeric(total_rows),
   alpha = numeric(total_rows),
@@ -176,6 +179,7 @@ z_indp_intervals <- data.frame(
 )
 
 t_stud_intervals <- data.frame(
+  name = "Student t",
   n = numeric(total_rows),
   m = numeric(total_rows),
   alpha = numeric(total_rows),
@@ -202,10 +206,10 @@ for (n in sizes){
       i_s <- z_stat_indp(n, theta, sample_mean, a)
       t_s <- t_ci(n, theta, sample_mean, sample_sd, a)
       
-      z_stat_intervals[counter, ] <- list(n, m, a, z_s$ciq, z_s$cix, z_s$cim) 
-      chi_sq_intervals[counter, ] <- list(n, m, a, c_s$ciq, c_s$cix, c_s$cim)
-      z_indp_intervals[counter, ] <- list(n, m, a, i_s$ciq, i_s$cix, i_s$cim) 
-      t_stud_intervals[counter, ] <- list(n, m, a, t_s$ciq, t_s$cix, t_s$cim) 
+      z_stat_intervals[counter, ] <- list("Z-stat", n, m, a, z_s$ciq, z_s$cix, z_s$cim) 
+      chi_sq_intervals[counter, ] <- list("Chi-Squared", n, m, a, c_s$ciq, c_s$cix, c_s$cim)
+      z_indp_intervals[counter, ] <- list("Z-stat-independent", n, m, a, i_s$ciq, i_s$cix, i_s$cim) 
+      t_stud_intervals[counter, ] <- list("Student t", n, m, a, t_s$ciq, t_s$cix, t_s$cim) 
       counter <- counter + 1
     }
   }
@@ -223,16 +227,39 @@ First of all, in all of the CI methods different parameters used, such as: sampl
 
 ```{r}
 all_intervals <- list(
-  "Z-stat" = z_stat_intervals,
-  "Chi-squared" = chi_sq_intervals,
-  "Z-stat-indp" = z_indp_intervals,
-  "T-stud" = t_stud_intervals
+  z_stat_intervals,
+  chi_sq_intervals,
+  z_indp_intervals,
+  t_stud_intervals
 )
 
-for (name in names(all_intervals)) {
-  interval <- all_intervals[[name]]
-  cat("Interval type:", name, "CI quality on average:", mean(interval[, 4]), "\n")
+for (interval in all_intervals) {
+  cat("Interval type:", interval[1, 1], "CI quality on average:", mean(interval[, 5]), "\n")
 }
 ```
 
 From the calculations from these samples we could say that using z-statistic that is independent of the sample variance is the most accurate way for $\theta$. From the first sight we don't really see the difference in the dependence on the $s$ of the Z statistic method, but if you compare the maximum length you could see that the independent method length is 2.62 vs. 1.80 in the other. This gives us more "evidence" to our estimation.
+
+#### Visualisation to support the conclusions
+
+```{r}
+library(ggplot2)
+
+results_df <- do.call(rbind, all_intervals)
+
+
+for (n_val in sizes) {
+  
+  df_n <- subset(results_df, n == n_val)
+  
+  print(
+    ggplot(df_n, aes(x = alpha, y = mean_len, fill = name)) +
+      geom_bar(stat = "identity", position = "dodge") +
+      labs(title = paste("Mean CI Length (n =", n_val, ")"),
+           x = "Alpha value", y = "Mean CI Length") +
+      scale_x_continuous(breaks = c(0.01, 0.05, 0.10)) +
+      theme_minimal()
+  )
+}
+
+```
